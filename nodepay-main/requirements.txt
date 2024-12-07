@@ -1,7 +1,0 @@
-aiohttp
-cloudscraper
-loguru
-fake-useragent
-python-dateutil
-colorama
-curl_cffi
