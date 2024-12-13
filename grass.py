@@ -61,7 +61,7 @@ async def connect_to_wss(user_id):
                                 "user_agent": custom_headers['User-Agent'],
                                 "timestamp": int(time.time()),
                                 "device_type": "desktop",
-                                "version": "4.28.1",
+                                "version": "4.26.2",
                             }
                         }
                         logger.debug(f"Sending AUTH Response: {auth_response}")
