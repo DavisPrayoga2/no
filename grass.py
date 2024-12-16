@@ -97,24 +97,3 @@ async def main():
 
     tasks = [asyncio.ensure_future(connect_to_wss(proxy, user_id.strip(), traffic_type='PET'))]
     await asyncio.gather(*tasks)
-
-async def auto_reboot_task():
-    """Task to reboot the WebSocket connection every 1 hour."""
-    global reboot_counter
-    while True:
-        logger.info("Reboot timer started. Rebooting WebSocket connection in 1 hour...")
-        await asyncio.sleep(3600)  # Tunggu 1 jam
-        reboot_counter += 1
-        logger.info(f"Rebooting WebSocket connection... (Total Reboots: {reboot_counter})")
-        # Restart the main WebSocket connection task
-        asyncio.create_task(connect_to_wss(USER_ID))
-
-
-async def main():
-    # Jalankan koneksi WebSocket dan task reboot otomatis
-    asyncio.create_task(auto_reboot_task())  # Task untuk reboot setiap 1 jam
-    await connect_to_wss(USER_ID)
-
-
-if __name__ == '__main__':
-    asyncio.run(main())
