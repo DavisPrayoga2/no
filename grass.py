@@ -33,7 +33,7 @@ async def connect_to_wss(socks5_proxy, user_id, traffic_type='PET'):
             urilist = ["wss://proxy.wynd.network:4444/", "wss://proxy.wynd.network:4650/", "wss://proxy2.wynd.network:4444/", "wss://proxy2.wynd.network:4650/", "wss://proxy3.wynd.network:4444/", "wss://proxy3.wynd.network:4650/"]
             uri = random.choice(urilist)
 
-            async with websockets.connect(uri, ssl=ssl_context, extra_headers=custom_headers,
+            async with websockets.connect(uri, ssl=ssl_context, server_hostname=server_hostname,
                                           extra_headers=custom_headers) as websocket:
                 async def send_ping():
                     while True:
