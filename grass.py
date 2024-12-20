@@ -1,64 +1,53 @@
-import requests
-import time
 import asyncio
-import json
-import ssl
-import uuid
 import random
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from websockets_proxy import Proxy, proxy_connect
-from fake_useragent import UserAgent
+import ssl
+import json
+import time
+import uuid
+import websockets
 from loguru import logger
-import schedule
-import base64
-# Tetapkan user_id
-USER_ID = "2oSjgJ8VS3Rg9j46tDpo0v17ttM"
+from fake_useragent import UserAgent
+from datetime import datetime
 
-def log_reputation(completeness, consistency, timeliness, availability):
-    logger.info(f"Complete: {completeness}, Konsistensi: {consistency}, Waktu: {timeliness}, Ketersediaan: {availability}")
-async def connect_to_wss(socks5_proxy, user_id, traffic_type='PET'):
-    device_id = str(uuid.uuid3(uuid.NAMESPACE_DNS, socks5_proxy))
-    logger.info(device_id)
-    user_agent = UserAgent()
+async def connect_to_wss(user_id):
+    user_agent = UserAgent(os=['windows', 'macos', 'linux'], browsers='chrome')
     random_user_agent = user_agent.random
-
+    device_id = str(uuid.uuid4())
+    logger.info(device_id)
     while True:
         try:
-            await asyncio.sleep(1)
-            custom_headers = {"User-Agent": random_user_agent}
+            await asyncio.sleep(random.randint(1, 10) / 10)
+            custom_headers = {
+                "User-Agent": random_user_agent,
+            }
             ssl_context = ssl.create_default_context()
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
-
-            urilist = ["wss://proxy.wynd.network:4444/", "wss://proxy.wynd.network:4650/", "wss://proxy2.wynd.network:4444/", "wss://proxy2.wynd.network:4650/", "wss://proxy3.wynd.network:4444/", "wss://proxy3.wynd.network:4650/"]
+            urilist = ["wss://proxy2.wynd.network:4444/","wss://proxy2.wynd.network:4650/"]
             uri = random.choice(urilist)
-
-            async with websockets.connect(uri, ssl=ssl_context, server_hostname=server_hostname,
-                                          extra_headers=custom_headers) as websocket:
+            server_hostname = "proxy2.wynd.network"
+            async with websockets.connect(uri, ssl=ssl_context, extra_headers=custom_headers,
+                                          server_hostname=server_hostname) as websocket:
                 async def send_ping():
                     while True:
                         send_message = json.dumps(
                             {"id": str(uuid.uuid4()), "version": "1.0.0", "action": "PING", "data": {}})
-                        try:
-                            await websocket.send(send_message)
-                            logger.debug(send_message)
-                        except Exception as e:
-                            logger.error(f"Gagal kirim PING: {e}")
-                        await asyncio.sleep(2)
+                        logger.debug(send_message)
+                        await websocket.send(send_message)
+                        await asyncio.sleep(5)
 
+                await asyncio.sleep(1)
                 asyncio.create_task(send_ping())
 
                 while True:
                     response = await websocket.recv()
                     message = json.loads(response)
                     logger.info(message)
-
-                    completeness = True 
-                    consistency = True
-                    timeliness = True 
-                    availability = True 
-
-                    log_reputation(completeness, consistency, timeliness, availability)
+                        
+                    # Generate the current datetime in UTC
+                    now = datetime.utcnow()
+                    # Format the datetime as a string in the desired format
+                    formatted_time = now.strftime('%a, %d %b %Y %H:%M:%S GMT')
 
                     if message.get("action") == "AUTH":
                         auth_response = {
@@ -69,31 +58,45 @@ async def connect_to_wss(socks5_proxy, user_id, traffic_type='PET'):
                                 "user_id": user_id,
                                 "user_agent": custom_headers['User-Agent'],
                                 "timestamp": int(time.time()),
-                                "device_type": "extension",
-                                "version": "3.3.2"
+                                "device_type": "desktop",
+                                "version": "4.30.0",
                             }
                         }
-                        try:
-                            await websocket.send(json.dumps(auth_response))
-                            logger.debug(auth_response)
-                        except Exception as e:
-                            logger.error(f"Gagal kirim respon AUTH: {e}")
+                        logger.debug(auth_response)
+                        await websocket.send(json.dumps(auth_response))
+                        
+                    elif message.get("action") == "HTTP_REQUEST":
+                        httpreq_response = {
+                            "id": message["id"],
+                            "origin_action": "HTTP_REQUEST",
+                            "result": {
+                                "url": message["url"],
+                                "status": int(200),
+                                "status_text": "OK",
+                                "headers": {
+                                    "content-type": "application/json; charset=utf-8",
+                                    "date": formatted_time,
+                                    "keep-alive": "timeout=5",
+                                    "proxy-connection": "keep-alive",
+                                    "x-powered-by": "Express",
+                                }
+                            }
+                        }
+                        logger.debug(httpreq_response)
+                        await websocket.send(json.dumps(httpreq_response))
 
                     elif message.get("action") == "PONG":
                         pong_response = {"id": message["id"], "origin_action": "PONG"}
-                        try:
-                            await websocket.send(json.dumps(pong_response))
-                            logger.debug(pong_response)
-                        except Exception as e:
-                            logger.error(f"Gagal kirim respon PONG: {e}")
-
+                        logger.debug(pong_response)
+                        await websocket.send(json.dumps(pong_response))
         except Exception as e:
-            pass 
-            await asyncio.sleep(10) 
+            logger.error(e)
+
 
 async def main():
-    with open(user_ids_file, 'r') as file:
-        user_ids = file.read().splitlines()
+    #find user_id on the site in conlose localStorage.getItem('userId') (if you can't get it, write allow pasting)
+    _user_id = input('Please Enter your user ID: ')
+    await connect_to_wss(_user_id)
 
-    tasks = [asyncio.ensure_future(connect_to_wss(proxy, user_id.strip(), traffic_type='PET'))]
-    await asyncio.gather(*tasks)
+if __name__ == '__main__':
+    asyncio.run(main())
